@@ -28,30 +28,35 @@ def fetch_channel_videos_data(api_key, channel_id, params):
     next_page_token = None
     channel_videos_data_items = []
     
-    while True:
-        batch_params = params.copy()
-        batch_params['playlistId'] = playlist_id
-        batch_params['part'] = 'snippet'
-        batch_params['pageToken'] = next_page_token
-        res = youtube.playlistItems().list(**batch_params).execute()
-        channel_videos_data = res['items']
-        merged_data_list = []
-        
-        for data_item in channel_videos_data:
-            merged_data = data_item.copy()
-            video_id = data_item['snippet']['resourceId']['videoId']
-            video_data = fetch_video_details_data(api_key, video_id)
-            merged_data.update(video_data)
-            merged_data['playlistId'] = playlist_id
-            merged_data['channelTitle'] = data_item['snippet']['channelTitle']
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        while True:
+            batch_params = params.copy()
+            batch_params['playlistId'] = playlist_id
+            batch_params['part'] = 'snippet'
+            batch_params['pageToken'] = next_page_token
+            res = youtube.playlistItems().list(**batch_params).execute()
+            channel_videos_data = res['items']
+            future_to_data_item = {}
             
-            merged_data_list.append(merged_data)
+            for data_item in channel_videos_data:
+                video_id = data_item['snippet']['resourceId']['videoId']
+                future = executor.submit(fetch_video_details_data, api_key, video_id)
+                future_to_data_item[future] = data_item
             
-        channel_videos_data_items += merged_data_list
-        next_page_token = res.get('nextPageToken')
-        
-        if next_page_token is None:
-            break
+            for future in concurrent.futures.as_completed(future_to_data_item):
+                data_item = future_to_data_item[future]
+                merged_data = data_item.copy()
+                video_data = future.result()
+                merged_data.update(video_data)
+                merged_data['playlistId'] = playlist_id
+                merged_data['channelTitle'] = data_item['snippet']['channelTitle']
+                
+                channel_videos_data_items.append(merged_data)
+                
+            next_page_token = res.get('nextPageToken')
+            
+            if next_page_token is None:
+                break
 
     return channel_videos_data_items
 

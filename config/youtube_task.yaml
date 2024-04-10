@@ -1,0 +1,23 @@
+task_list:
+  channel_videos:
+    - UCIwFjwMjI0y7PDBVEO9-bkQ
+
+channel_videos:
+  columns:
+    - kind
+    - etag
+    - id
+    - channelTitle
+    - playlistId
+    - snippet_publishedAt
+    - snippet_channelId
+    - snippet_title
+    - snippet_description
+    - contentDetails_duration
+    - contentDetails_caption
+    - contentDetails_licensedContent
+    - statistics_viewCount
+    - statistics_likeCount
+    - statistics_commentCount
+  params:
+    maxResults: 60
